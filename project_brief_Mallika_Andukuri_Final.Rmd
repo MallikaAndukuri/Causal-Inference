@@ -1,0 +1,268 @@
+---
+title: | 
+    | ECON 7710 
+    | Individual Project: Workplace Wellness
+subtitle: "Due: December 3" 
+author: "Mallika ANDUKURI"
+date: "2023-07-31"
+output: html_document
+---
+
+install.packages("ivreg")
+
+```{r setup, include=FALSE}
+
+# Attach packages
+library(tidyverse)     # To use the tidy packages
+library(ggplot2)       # For plotting and visualizing
+library(modelsummary)  # To make pretty tables
+library(vtable)        # To report summary statistics quickly and easily
+library(haven) 
+library(estimatr)
+library(ivreg)
+
+# Set global options
+knitr::opts_chunk$set(echo = FALSE, eval=TRUE)
+
+# Load the data 
+my_data <- read_dta("https://reifjulian.github.io/illinois-wellness-data/data/stata/claims.dta")
+
+```
+
+In this assignment, you will use data from [Jones, Molitor, and Reif (2019)](https://www.google.com/search?client=safari&rls=en&q=What+Do+Workplace+Wellness+Programs+Do%3F+Evidence+from+the+Illinois+Workplace+Wellness+Study&ie=UTF-8&oe=UTF-8) to write a brief that explains why or why not your workplace should adopt a workplace wellness program. You are going to work with the claims data from this randomized control trial to evaluate the effects of a workplace wellness program on medical spending. We will measure participation in this program by whether the employee participated in a Health Risk Assessment (HRA) in 2016.
+
+Only some employees were eligible to participate in this assessment. This treatment status was randomly assigned. These data contain information on whether employees were eligible to participate (`treat`), whether they completed the assessment if eligible (`hra_c_yr1`), their gender (`male`), their age bin (`age37_49`, `age50`), whether they are white (`white`), whether they had certain medical conditions in 2015-2016, 2016-2017, and 2016-2018, and various types of medical spending for those years.
+
+This R markdown file will guide you through the process of writing this memo.
+
+You should turn in both:
+
+1.  R notebook with R code executed (so I can see your work)
+
+2.  R notebook without R code executed (the deliverable to your boss who is only interested in seeing polished tables and figures and reading your conclusions)
+
+Each section of this file contains dates where the material we cover in class and in homework assignments corresponds to what you are being asked to do.
+
+The [replication files](https://github.com/reifjulian/illinois-wellness-data) for this paper may provide helpful examples.
+
+## Executive Summary
+
+**Dates to work on this: After October 22**
+
+In this section, you should (briefly) describe the business question you are using causal inference to answer, the methods you use, and the conclusions you draw.
+
+## Summary Statistics Among Employers With Workplace Wellness Programs
+
++-**Dates to work on this: August 15 - August 27**
+
+In this section, you should describe the data that you use and provide some summary statistics for employees that work for employers that work for employers that offer workplace wellness programs. To do so, you should first restrict to employees who were offered a workplace wellness program (`treat` = 1).
+
+This should include:
+
+1.  Tables summarizing the characteristics (gender, age, race, hospital spending 15-16 (`spendHosp_0715_0716`), office spending 15-16 (`spendOff_0715_0716`), total spending 15-16 (`spend_0715_0716`)) and outcomes (hospital spending 16-17, office spending 16-17, total spending 16-17) for employees who do and don't enroll in workplace wellness (`hra_c_yr1`). For additional help, see Homework #1 part D.
+
+2.  A figure plotting the distribution of health care spending for employees who do and don't enroll in workplace wellness. Again, see Homework #1 part D.
+
+3.  Anything else that you find interesting about the data!
+
+You should write a few sentences describing what your reader should take away from each table and figure you include.
+
+```{r}
+# Filter data to only employees that had the option to enroll in the wellness plan 
+only_treat <- filter(my_data, treat == 1)
+
+glimpse(my_data)
+  
+# Create a table summarizing the characteristics for enrollees that do and don't enroll 
+sumtable(only_treat, 
+         vars=c('male', 'age37_49', 'age50', 'white', 
+                'spendHosp_0715_0716', 'spendOff_0715_0716', 'spend_0715_0716'), 
+         group='hra_c_yr1', 
+         title="Characteristics and Spending by Workplace Wellness Program Enrollment")
+
+
+
+# Create a table summarizing the outcomes for enrollees that do and don't enroll 
+# Insert sumtable here 
+sumtable(only_treat, 
+         vars=c('spendHosp_0816_0717', 'spendOff_0816_0717', 
+                'spend_0816_0717'),
+         group='hra_c_yr1', 
+         title="Comparison of Outcomes by Workplace Wellness Program Enrollment")
+
+
+# Creating the ggplot
+ggplot(data = only_treat, aes(x=spend_0715_0716, fill=as.factor(hra_c_yr1), color=as.factor(hra_c_yr1))) + 
+  geom_density(alpha=0.4) +  xlim(0, 2500) +
+  labs(title="Distribution of Total Healthcare Spending by Enrollment Status",
+       x = "Total Healthcare Spending",
+       fill = "Enrollment Status",
+       color = "Enrollment Status")
+
+```
+**Answers ** 
+1.
+#Create a table summarizing the characteristics for enrollees that do and don't enroll :
+The table shows that people who signed up for the wellness program were similar to those who didn't in terms of gender, age, and race, which is good because it means the comparison between the two groups is fair.There's a slightly higher proportion of men in the non-enrollee group (46%) compared to the enrollee group (40%).When it comes to age distribution, Group-1 had a marginally higher percentage of individuals aged 50 or above (34%) compared to Group-2 (31%).Racial composition appears consistent between the two groups, with each having 84% of its members identifying as white.Even though the numbers show that people who joined the program spent less on hospital visits initially, there's a lot of variation in spending, so it's hard to say for sure if the program is the reason for the lower costs. We'll need to dig deeper with more detailed stats to really understand if the program is making a difference.
+# Create a table summarizing the outcomes for enrollees that do and don't enroll 
+The "Comparison of Outcomes by Workplace Wellness Program Enrollment" table provides a snapshot of healthcare spending between two groups of employees in the 2016-2017 period: those who did not enroll in the wellness program (Group 0) and those who did (Group 1).
+The average hospital spending for non-enrollees (Group 0) was higher at 371 compared to 268 for enrollees (Group 1), suggesting that enrollment might be associated with lower hospital costs.
+Office spending was slightly higher for enrollees at 73 versus 58 for non-enrollees. This could indicate that enrollees are possibly using more office-based services.
+the total spending in Overall for non-enrollees had higher total healthcare spending (635) compared to enrollees (517), which mirrors the pattern observed in hospital spending.
+The table also shows that people in the wellness program seem to spend less on hospital bills and overall health costs, which might mean the program is helping to save money. But, there's a wide range in what people spend, especially for those not in the program, so it's not the same for everyone. Before we can be sure it's really the program making the difference, we need to considers other factors too.
+# Takeaways from ggplot
+The graph presents the distribution of total healthcare spending by enrollment status in the workplace wellness program. It shows two groups: those who didn't enroll in the program (denoted by the color for '0') and those who did (denoted by the color for '1').
+The peak for non-enrollees (color '0') appears slightly higher, indicating a larger proportion of non-enrolled employees had very low healthcare spending.
+The tail of the distribution, particularly for non-enrollees, extends further, which could imply that this group has more individuals with high healthcare costs.
+The distribution for enrolled employees (color '1') is more tightly clustered around the lower spending amounts, suggesting that their healthcare costs are more consistently low.
+
+
+
+## Regression Analysis
+
+**Dates to work on this: August 28 - September 17**
+
+In this section, you should estimate OLS to evaluate the effects of the workplace wellness program (`hra_c_yr1` = 1) on total spending (`spend_0816_0717`) among those who were eligible to enroll (see Homework #3). Estimate a baseline model then include controls of your choice. You should weight your regressions by how long individuals had health insurance coverage.
+
+You should present a table containing your regression estimates. Describe what regression models you chose to estimate and why. Discuss why you are cautious about interpreting your results as causal.
+
+```{r}
+# Baseline model 
+
+baseline <- lm_robust(spend_0816_0717 ~ hra_c_yr1, data = only_treat, weights = covg_0816_0717, se_type = "HC1")
+summary(baseline)
+
+
+# Add additional models with controls 
+
+model_with_controls <- lm_robust(spend_0816_0717 ~ hra_c_yr1 + male + age37_49 + age50 + white, 
+    data = only_treat, weights = covg_0816_0717, se_type = "HC1")
+
+# Present in a regression table 
+models = list("Baseline Model" = baseline, "Model with Controls" = model_with_controls)
+modelsummary(models, 
+             coef_omit="(Intercept)", 
+             statistic=c("std.error", "statistic", "conf.int"), fmt=4,
+             gof_map = c("nobs", "r.squared"),
+             title="Regression Analysis of Workplace Wellness Program on Total Spending" )
+
+```
+
+#Answers
+To understand the program's impact, I developed two distinct regression models. The initial model assessed the program's direct influence on spending, while the enhanced model adjusted for additional variables like gender, race, and age to mitigate potential biases.
+
+I started with the baseline model to capture a straightforward effect of the wellness program on spending, which indicated a reduction of $137.3 in healthcare expenses for participants. When I introduced more control variables, this effect became more pronounced, showing a decrease of $152.45 in spending.
+
+By including these controls, I aimed to isolate the effect of the wellness program from other factors that could also sway healthcare spending. But I approach these findings with a degree of caution for several reasons. Firstly, the program wasn't randomly assigned, making it challenging to claim a causal relationship confidently. Secondly, there's a chance that those who enrolled in the program were inherently different from non-participants, possibly healthier or more cost-conscious. Lastly, the model may not account for all variables that influence healthcare spending and program enrollment.
+
+## Comparison of Treatment and Control Groups
+
+**Dates to work on this: September 17 - October 4**
+
+In this section, you will evaluate the balance between the treatment (`treat` = 1) and control groups (`treat` = 0) and test whether outcomes are different between the two groups (see Homework #4). Discuss whether you are satisfied that the randomization was done correctly.
+
+```{r}
+
+
+
+# Create a table summarizing the characteristics for treated and untreated enrollees
+characteristics_table <- sumtable(my_data, 
+                                  vars=c('male', 'age37_49', 'age50', 'white','spendHosp_0715_0716', 'spendOff_0715_0716', 'spend_0715_0716'), # Add other relevant characteristics variables here
+                                  group='treat', 
+                                  title="Characteristics of Treated and Untreated Enrollees")
+
+# Create a table summarizing the outcomes for treated and untreated enrollees
+outcomes_table <- sumtable(my_data, 
+                           vars=c('spendHosp_0816_0717', 'spendOff_0816_0717', 'spend_0816_0717'), # Add other relevant outcome variables here
+                           group='treat', 
+                           title="Outcomes of Treated and Untreated Enrollees")
+
+# Test whether characteristics are different 
+t.test(spendHosp_0715_0716 ~ treat, data = my_data)
+t.test(spendOff_0715_0716 ~ treat, data = my_data)
+t.test(spend_0715_0716 ~ treat, data = my_data)
+ t.test(male ~ treat, data = my_data)
+  t.test(age37_49 ~ treat, data = my_data)
+  t.test(age50 ~ treat, data = my_data)
+  t.test(white ~ treat, data = my_data)
+
+# Test whether outcomes are difference 
+  t.test(spendHosp_0816_0717 ~ treat, data = my_data)
+  t.test(spendOff_0816_0717 ~ treat, data = my_data)
+  t.test(spend_0816_0717 ~ treat, data = my_data)
+  
+# Insert additional t test here 
+
+
+```
+## Answers
+
+Summary of Characteristics:
+
+Demographic Aspects:
+This section includes demographic variables like gender, age categories (age50, age37_49), and racial composition (white). For both the treatment and control groups, average values and standard deviations are outlined.
+We performed Welch Two Sample t-tests for each demographic variable to assess significant differences between the treatment and control groups.
+
+Healthcare Expenditure Variables:
+This includes variables like spendHosp_0715_0716, spendOff_0715_0716, and spend_0715_0716, with means and standard deviations detailed for each group.
+
+Summary of Outcomes:
+
+Healthcare Spending Variables:
+Echoing the characteristics summary, this part lists average values and standard deviations for spending variables (spendHosp_0816_0717, spendOff_0816_0717, and spend_0816_0717) across both groups.
+
+Equilibrium in Characteristics:
+
+The treatment and control groups show a notable balance across all measured characteristics, encompassing gender, age, race, and initial spending levels. The t-test p-values exceed 0.05, suggesting no significant evidence to dispute the hypothesis of equal mean values for these groups.
+
+Equilibrium in Outcomes:
+
+Similarly, both groups demonstrate balance regarding hospital spending, out-of-pocket expenses, and total spending in the year post-intervention. Again, the t-tests yield p-values over 0.05, indicating insufficient evidence to challenge the hypothesis of equal average spending between the groups.
+
+Given these findings, I am confident that the randomization process was effectively executed.
+
+
+
+## IV Estimates
+
+**Dates to work on this: October 4 - October 22**
+
+In this section, you will estimate IV estimates of the effects of the workplace wellness program (see Homework #5). First, you should report the first stage. Then, present your IV estimates of the effects of the workplace wellness program on spending. Discuss why your IV estimates may differ from the OLS estimates you estimated above.
+
+```{r}
+# Replace workplace wellness variable with 0 for observations in the control group 
+my_data$hra_c_yr1[is.na(my_data$hra_c_yr1)] <- 0
+
+# Estimate the first stage 
+first_stage <- lm(hra_c_yr1 ~ treat, data = my_data, weights = covg_0816_0717)
+hra_c_yr1_hat <- predict(first_stage)
+summary(first_stage)
+
+# Estimate the reduced form 
+rf <- lm(spend_0816_0717 ~ treat, data = my_data, weights = covg_0816_0717)
+summary(rf)
+# insert command to estimate the second stage regression here
+second_stage <- lm(spend_0816_0717 ~ hra_c_yr1_hat, data = my_data, weights = covg_0816_0717)
+summary(second_stage)
+# Estimate 2SLS 
+iv <- ivreg(spend_0816_0717 ~ hra_c_yr1 | treat, data = my_data, weights = covg_0816_0717)
+
+# Report results in a regression table 
+iv_models = list("First Stage" = first_stage, "Reduced Form" = rf, "IV Estimate" = iv)
+modelsummary(iv_models, 
+             coef_omit="(Intercept)", 
+            vcov="robust",
+             statistic=c("std.error", "statistic", "conf.int"), fmt=4,
+             gof_map = c("nobs", "r.squared"),
+             title = "IV Estimates of the Effects of the Workplace Wellness Program on Spending")
+```
+The first stage of the model determined that the treatment variable is a strong predictor of program enrollment, implying that the instrument is valid. However, successive stages, including the reduced form and the second stage of the 2SLS, demonstrated that, as evidenced by the high p-values, the treatment variable did not meaningfully explain the variation in healthcare spending. The final instrumental variables estimation confirmed these findings, showing that the program had no significant causal effect on spending. Although methodologically solid, this extensive regression analysis reveals that the workplace wellness program's influence on healthcare expenses is not statistically apparent given the scope of the data and the model specified. These results show the need for additional research, maybe with different instruments or factors, to completely evaluate the program's effectiveness. 
+
+
+## Conclusion
+
+**Dates to work on this: After October 22**
+
+Here, you should provide a recommendation for your employer and discuss why your recommendation does or doesn't differ from your boss's expectation that workplace wellness programs work.
+
+Following the detailed investigation, my proposal would be to not to  implement the workplace wellness program. The observed changes in healthcare spending should be regarded with caution due to their direct link with the wellness program. While the instrumental variable (IV) analysis provides an estimate of the program's causal effect, it raises questions about the instrument's strength and effectiveness. The lack of significant findings in the reduced form of the analysis raises concerns about the instrument's ability to appropriately isolate the influence of the wellness program. This uncertainty means that the program may not have the intended impact on healthcare spending. Given these facts, it would be advisable to reconsider or reevaluate the choice to implement such a program
